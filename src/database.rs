@@ -29,7 +29,7 @@ pub struct ReadOnly;
 #[derive(Debug)]
 pub struct ReadWrite;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Database<'a> {
     name: String,
     base_url: Url,

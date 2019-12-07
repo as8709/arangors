@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
-use reqwest::{Client, Url};
+use failure::{format_err, Error};
+use reqwest::{Client, Url, StatusCode};
 use serde::de::{Deserializer, Error as DeError};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{Database, Document};
 
@@ -26,8 +27,7 @@ impl<'a> Collection<'a> {
         collection_type: CollectionType,
     ) -> Collection<'a> {
         let name = name.into();
-        let path = format!("collection/{}/", name.as_str());
-        let url = database.get_url().join(path.as_str()).unwrap();
+        let url = database.get_url().clone();
         Collection {
             name: name,
             id: id.into(),
@@ -206,8 +206,17 @@ impl<'a> Collection<'a> {
     /// Creates a new document from the document given in the body, unless
     /// there is already a document with the _key given. If no _key is given, a
     /// new unique _key is generated automatically.
-    pub fn create_document<T>(&self, _doc: Document<T>) {
-        unimplemented!()
+    pub fn create_document<T>(&self, doc: Document<T>) -> Result<Document<T>, Error>
+    where
+        T: Serialize,
+    {
+        let url = self.base_url.join(&format!("_api/document/{}", self.name))?;
+        let resp  =  self.session.post(url).json(&doc).send()?;
+        match resp.status() {
+            StatusCode::ACCEPTED | StatusCode::CREATED => Ok(doc),
+            _ => Err(format_err!("Received Fail HTTP Code: {}", resp.status()))
+        }
+
     }
 
     /// Partially updates the document
